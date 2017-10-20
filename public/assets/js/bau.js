@@ -1,4 +1,4 @@
-//this is if we want to add/read the arrays from a database
+//this is if we want to add/read the arrays from a firebase database
 var config = {
   apiKey: "AIzaSyB1rP8APHhpysEOVtEe3GkxlGO6ZIRsNYg",
   authDomain: "bau-scheduler.firebaseapp.com",
@@ -6,16 +6,6 @@ var config = {
 };
 firebase.initializeApp(config);
 var database = firebase.database();
-
-//creates a unique id for each array item (not needed)
-function makeUniqueId() {
-  var text = "";
-  var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  //"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for (var i = 0; i < 10; i++)
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  return text;
-}
 
 //used to randomize arrays
 function shuffle(array) {
@@ -35,21 +25,6 @@ function shuffle(array) {
   }
 
   return array;
-}
-
-//converts a unix timestamp to a nicer string (not needed)
-function timeConverter(UNIX_timestamp){
-  var a = new Date(UNIX_timestamp);
-  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var year = a.getFullYear();
-  var month = months[a.getMonth()];
-  var date = a.getDate();
-  var hour = a.getHours();
-  var min = a.getMinutes();
-  var sec = a.getSeconds();
-  //var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
-  var time = 'Suggested on ' + date + ' ' + month + ' ' + year;
-  return time;
 }
 
 //gets all available timeslots for next two weeks
@@ -180,43 +155,48 @@ $(document).ready(function() {
 
   }
 
+  var eventsData = []; //create json object
   var displayId = 0;
-  var finalDisplay = {};
-  var finalKey = 'events';
-  finalDisplay[finalKey] = [];
 
-  //store timeslots to display that have been allocated to users
+  //store event timeslots to display that have been allocated to users
   for(var i = 0; i < currentTimeslots.length; i++) {
     if(currentTimeslots[i][2]) {
       displayId++;
-      var displayUser = currentTimeslots[i][2]+" turn to do support";
+      var displayUser = currentTimeslots[i][2]+"'s turn to do support";
       var displayTime = currentTimeslots[i][1];
       startDate = new Date(displayTime);
       endDate = new Date(displayTime);
-      endDate.setHours(endDate.getHours() + 4);
-      item = { }
-      item ["id"] = displayId;
-      item ["start"] = startDate.toISOString();
-      item ["end"] = endDate.toISOString();
-      item ["title"] = displayUser;
-      finalDisplay[finalKey].push(item);
+      endDate.setHours(endDate.getHours() + 4); //4 hours for support shift
+      eventsData.push({
+          id: displayId,
+          title: displayUser,
+          start: startDate.toISOString(),
+          end: endDate.toISOString()
+      });
     }
   }
 
-  //console.log(finalDisplay);
+  //console.log(eventsData);
 
-  $('#calendar').weekCalendar({
-    textSize:12,
-    useShortDayNames: true,
-    businessHours: {start: 8, end: 19, limitDisplay: true},
-    firstDayOfWeek: 1,
-    daysToShow: 14,
-    timeslotsPerHour: 3,
-    timeslotHeigh: 15,
-    hourLine: true,
-    data: finalDisplay,
-    height: function($calendar) {
-      return $(window).height() - $('h1').outerHeight(true);
+  $('#calendar').fullCalendar({
+    header: {
+			left: 'prev,next today',
+			center: 'title',
+			right: 'month,agendaWeek,agendaDay'
+		},
+    weekends: false,
+    firstDay: 1,
+		defaultView: 'listMonth',
+		events: eventsData //could have used a URL to PHP API which created the events data in JSON format but was quicker to do in Javascript
+	});
+
+  //binds button for switching calendar views
+  $("#changeView").on("click", function() {
+    var currentView = $('#calendar').fullCalendar('getView');
+    if(currentView.type=='listMonth'){
+      $('#calendar').fullCalendar('changeView', 'month');
+    } else {
+      $('#calendar').fullCalendar('changeView', 'listMonth');
     }
   });
 
